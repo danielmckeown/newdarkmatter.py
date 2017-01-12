@@ -398,7 +398,7 @@ while sub['desc_sfid'] != -1:
         #masses = f['PartType1']['SubfindDensity'][:]
     				#print "number of dm particles"
         			rr1 = np.sqrt(dx1**2 + dy1**2 + dz1**2)
-        		
+        			rr1 *= ((scale_factor) / (little_h)) # ckpc/h -> physical kpc  IMPORTANT
         		
         			
         			rrr1 = sorted(rr1)
