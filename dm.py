@@ -1,7 +1,6 @@
 
 
 
-
 ###This program will extract data from the Illustris simulation
 ## and calculate the radial distribution of mass,etc
 ## using concentric radii 
@@ -74,50 +73,66 @@ headers = {"api-key":"452a77edd4324ec835da440fc3fdc50b"}
 ### back as say snapshot 22  etc.   etc. and generate over 100 profiles for the dark
 ## matter, star, and gas densities of each galaxy and its corresponding progenitor
 
-id = 2
-
-url = "http://www.illustris-project.org/api/Illustris-2/snapshots/30/subhalos/" + str(id)
-sub = get(url) # get json response of subhalo properties
-print url
-# prepare dict to hold result arrays
-
-fields = ['snap','id','mass_gas','mass_stars','mass_dm','mass_bhs','len_stars','related']
-r9 = {}
-for field in fields:
-	r9[field] = []
-
-
-
-# Beginning of loop that runs over all the halos
-nM = 0	
-
-radiistring = ([])
-densitystring = ([])
-filename_list =([])
-filename1_list = ([])
-while sub['desc_sfid'] != -1:
-	for field in fields:
-		r9[field].append(sub[field])
-		
-
-
-		
-	#print r['mass_stars']   # this is just an example of what I am actually doing here
-# request the full subhalo details of the descendant by following the sublink URL
-	s = r9['id'][nM]
-	sub = get(sub['related']['sublink_descendant'])
-	#print len(r['id'])
-
-	t = r9['snap'][nM]
-	url1 = "http://www.illustris-project.org/api/Illustris-2/snapshots/" + str(t) + "/subhalos/" + str(s)
-	print url1
 		
 #### This next bit of code contains all the information about the specific redshift corresponding to each halo
 ###  given a value for t, the code picks out the proper redshift information so that the scale factor
 ### for each is correct	
+def running_sum(a):
+  tot = 0
+  for item in a:
+    tot += item
+    yield tot
 
 
+id = 10
+
+url = "http://www.illustris-project.org/api/Illustris-2/snapshots/130/subhalos/" + str(id)
+sub = get(url) # get json response of subhalo properties
+print url
+# prepare dict to hold result arrays
+
+fields = ['snap','id','mass_gas','mass_stars','mass_dm','mass_bhs','len_dm','related','parent','desc_sfid','prog_sfid']
+r = {}
+for field in fields:
+	r[field] = []
+# Beginning of loop that runs over all the halos
+
+n = 0	
+halo_dm_string = ([])
+radiistring = ([])
+densitystring = ([])
+redshift_string = ([])
+filename_list =([])
+filename1_list = ([])
+halo_id = ([])
+
+while sub['desc_sfid'] != -1:
+	for field in fields:
+		r[field].append(sub[field])
+		
+
+		
+	#print r['mass_stars']
+# request the full subhalo details of the descendant by following the sublink URL
+	s = r['id'][n]
+	sub = get(sub['related']['sublink_descendant'])
+	#print len(r['id'])
 	
+	dmhalomass = r['mass_dm']
+	q = r['len_dm']
+	#print p
+	#print q
+	t = r['snap'][n]
+	url1 = "http://www.illustris-project.org/api/Illustris-2/snapshots/" + str(t) + "/subhalos/" + str(s)
+	print url1
+	
+	q = r['len_dm']
+	parent = r['parent']
+	
+	descendant = r['desc_sfid']
+
+	progenitor = r['prog_sfid']	
+	halo_id.insert(n,s)
 	###### all the initialized code here
 	id1 = s
 	print id1
@@ -360,14 +375,9 @@ while sub['desc_sfid'] != -1:
 		redshift = 	0.00952166696794476	
 	elif t ==  135:
 		redshift = 	2.2204460492503099e-16	
+				
 	
-	
-	
-	
-
-
-	
-########################### NORMAL method of SUMMING DM PARTICLES
+	redshift_string.insert(n,redshift)
 	import pylab
 	import matplotlib.pyplot as plt
 	id1 = s
@@ -375,227 +385,198 @@ while sub['desc_sfid'] != -1:
 	params = {'dm':'Coordinates,SubfindDensity'}
 	scale_factor = 1.0 / (1+redshift)          #IMPORTANT NEEDED FOR EACH REDSHIFT
 	little_h = 0.704        #IMPORTANT NEEDED FOR EACH REDSHIFT
+	
 	sub1 = get(url1) # get json response of subhalo properties
 	saved_filename = get(url1 + "/cutout.hdf5",params) # get and save HDF5 cutout file
-	fields = ['snap','id','mass_gas','mass_stars','mass_dm','mass_bhs','len_stars']
-
-	little_r = 0    
-	big_r = 0.5   #units are kpc
+	
+	 #units are kpc
 	count = 0 
-	radialdmmass_density =([])
-	radialdmmass = ([])
-	radialdm_distance = ([])
-	# rr simply contains all the particle id's associated with the given shell
+	radialstarmass_density =([])
+	radialstarmass = ([])
+	radial_distance = ([])
+	
 	
 	while (count < 1):
-		try:
-		
-			with h5py.File(saved_filename) as f:
-			        dx1 = f['PartType1']['Coordinates'][:,0] - sub1['pos_x']
-        			dy1 = f['PartType1']['Coordinates'][:,1] - sub1['pos_y']
-        			dz1 = f['PartType1']['Coordinates'][:,2] - sub1['pos_z']
-        			dens = np.log10(f['PartType1']['SubfindDensity'][:])
-        #masses = f['PartType1']['SubfindDensity'][:]
-    				#print "number of dm particles"
-        			rr1 = np.sqrt(dx1**2 + dy1**2 + dz1**2)
-        			rr1 *= ((scale_factor) / (little_h)) # ckpc/h -> physical kpc  IMPORTANT
-        		
+	
+		 try:
+		 	with h5py.File(saved_filename) as f:
+		 
+		     		dx2 = f['PartType1']['Coordinates'][:,0] - sub1['pos_x']
+        	 		dy2 = f['PartType1']['Coordinates'][:,1] - sub1['pos_y']
+        	 		dz2 = f['PartType1']['Coordinates'][:,2] - sub1['pos_z']
+        	 		dens = np.log10(f['PartType1']['SubfindDensity'][:])
+
+        	 		# this is an undefined field for dark matter but well defined for stars
+        	 		
+        	 		rr2 = np.sqrt(dx2**2 + dy2**2 + dz2**2)
+        			rr2 *= (scale_factor/little_h)# ckpc/h -> physical kpc  IMPORTANT
+        	 		
+        	 		rrr2 = sorted(rr2)
+        	 		
+        	 		
+        	 		
+        	 		darkmattermass_density = ([])
         			
-        			rrr1 = sorted(rr1)
+        			radial_distance2 = ([])      	 		
+        	 		
+        	 	
         			
-        			
-        			totaldm_masss = len(sorted(rr1)) * 0.0035271
-        			
-        			#print "now printing totaldm mass"
-        			#print totaldm_masss
-        			
-        			##  Here iter variable is created
-        			iter = len(rrr1) / (13) 
-        			#print iter
-        			
-        			remainder = len(rrr1) % (13)
-        			#print remainder
-        			outer_radius1 = ([])
-        			volume = ([])
-        			error = ([])			
         			coun = 0
         			
         			
+        			iter = len(rrr2) / (13) 
+        			remainder = len(rrr2) % (13)
+        		
+        			
+        			dark_matters = ([])
+        			outer_radius2 = ([])
+        			
         			while coun < iter:
-        				
-        				#print "printing iter"
-        				
-        				#print iter
-        				top13 = rrr1[:13]
-        				
-        				
-        				error.insert(iter,np.sqrt(len(top13)))
-        				
-        				
-        				# this inserts the last entry in the list top 50 to get the outer radius
-        				outer_radius1.insert(coun,top13[12])
-        				#### NOTE: This outer_radius.insert loop keeps looping through and finding the next outer radius corresponding to the location of the next 150 dm particles
-        				
-        				#print "now printing outer radius"
-        				#print outer_radius1
-        				
-        				totaldmmass = len(top13) *  0.0035271    # 0.0035271 is the mass of each dm particle in the simulation
-        				
-        				#print rrr1[:150]
-        				#"now printing total particles"
-        				#print rrr1
-        				# was del rrr1[:50]
-        				del rrr1[:13]
-        				#print "printing new rrr"
-        				#print rrr
-        				
-        				coun = coun + 1
-        				#print outer_radius1
-        			error.insert(iter,12.24744871391589)
         			
+        				top5 = rrr2[:13]
+        				#print "printing first 5"
+        				
+        				
+        				
+        				
+        				#print top50[0]
+        				outer_radius2.insert(coun,top5[12])
+        				
+        				totaldm_mass = len(top5) * 0.0035271
+        	 			dark_matters.insert(coun,totaldm_mass)
+        				
+        		
+        				del rrr2[:13]
+        				
+        				coun = coun + 1	
         			
-        			#print "now printing last radiii rrr1"
-        			#print rrr1[remainder - 1]
-        			#### now insert the last outer radii
-        			if remainder > 0:
-        				outer_radius1.insert(iter,rrr1[remainder - 1])
+        			outer_radius2.insert(0,0) 
+        		
+        			# Now in this loop, take all the outer radii that were previously found and use them to make the volume from which we will form the densities from
         			
-        			##### now insert the first outer radii
-        			outer_radius1.insert(0,0)
-        			#print "printing outer_radius of dark matters"
-        			#print outer_radius1
-        			     			
-        			
-        			darkmattermass_density = ([])
-        			radial_distance1 = ([])
-        			
-        			
-        			
-        			#print "now printing outer radius"
-        			#print outer_radius1 
         			m = 0
-        			darkmass = ([])
-        			while m < iter:
-         				
-        				
-        				volume1 = (4.0/3.0)*3.14*((outer_radius1[m + 1])**3) - (4.0/3.0)*3.14*((outer_radius1[m])**3)
-        				#print "now printing total DM mass"
-        				
-        				#print totaldmmass
-        				#print "now printing volume1"
-        				#print volume1
-        				
+        			dark_mass_density = ([])	
+        			while m < iter :
         			
+        				if remainder > 0 :
+        					volume2 = (4.0/3.0)*3.14*((outer_radius2[m + 1])**3) - (4.0/3.0)*3.14*((outer_radius2[m])**3)
+        			
+        				density = (dark_matters[m]) / (volume2)
+        				dark_mass_density.insert(m,density)
         				
-        				density = totaldmmass / volume1
-        				#print "printing densities"
-        				#print density
-        				
-        				darkmattermass_density.insert(m,density)
-        				#print darkmattermass_density
-        				
-        				radial_distance1.insert(m,outer_radius1[m + 1])	
         				
         				m = m + 1
-        				darkmass.insert(m,totaldmmass)
-        
-    				lastmass = remainder * 0.0035271
-        			radialdm_distance.insert(count,big_r)
-        			if remainder > 0 :
-        				volume2 = (4.0/3.0)*3.14*((outer_radius1[m + 1])**3) - (4.0/3.0)*3.14*((outer_radius1[m])**3)
-        			
-        				final_density = lastmass / volume2
-        				darkmattermass_density.insert(m,final_density)
         		
-        			little_r = little_r + 0.5    
-        			big_r = big_r + 0.5 #units are kpc
-        			count = count + 1
-					
-		except KeyError:
-			break
-
-		
-		y1 =  darkmattermass_density 
-		
-		
-		
-		r1 = outer_radius1
-	
-		
+        	
+        	 		outer_radius2.pop(0)
+        	 	#	radialstarmass.insert(count,totalmass2)
+        	 	#	radial_distance.insert(count,big_r)
+        	 	#	density = radialstarmass[count] / volume2
+        #print density
+        	 	#	radialstarmass_density.insert(count,density2)
+        
+    		 		count = count + 1
+		 except KeyError:
+			 break
 	
 
+	
+		 
+
+		 total_dm_mass = list(running_sum(dark_matters))
+		 
+		 del total_dm_mass[0]
+		 
+		 del dark_mass_density[0]
+		 y1 =  dark_mass_density 
 		
-#  these two lists y11 and r11 are not really relevant to the fit, they are declared data that was 
-# successfully fit whereas the actually data we try to fit comes from r1 and y1 above
-# which is generated for each halo that is taken
+		
+		
+		 r1 = outer_radius2
+		 
+		
+		
+		 unofficial = len(y1) * 13 *  0.0035271 
 		
 	
 		
 		
-		filename = "darkmatterdensityhalo" + str(s) + "redshift" + str(t) + ".txt" 
+		 filename = "darkmatterdensityhalo" + str(s) + "redshift" + str(t) + ".txt" 
 		
-		filename1 = "darkmatterradii" + str(s) + "redshift" + str(t) + ".txt"
+		 filename1 = "darkmatterradii" + str(s) + "redshift" + str(t) + ".txt"
+		 
+		 filename6 = "parenthalos.txt"
+		 filename7 =  "darkmattermass.txt"
+		 filename8 = "progenitor.txt"
+		 filename9 = "descendant.txt"
+		 filename10 = "halo_id.txt"
+		 filename11 = "redshift.txt"
+		 filename12 = "massatradiusofhalo" + str(s) + "redshift" + str(t) + ".txt"
+		 filename13 = "mass_at_radii.txt"
+		 
+		 def format(value):
+		
+			 return "%.18f" % value
+		
+		 y2 = [format(x) for x in y1]
+		
+		 
+		 
+		 
+		 del r1[0]
 		
 		
 		
+		 def formats(values):
 		
-			
-		def format(value):
-		
-			return "%.18f" % value
-		
-		y2 = [format(x) for x in y1]
-		
-		del r1[0]
+			 return "%.8f" % values	
 		
 		
-		def formats(values):
-		
-			return "%.8f" % values	
-		
-		
-		r2 = [formats(x) for x in r1]
-
-		import csv
+		 r2 = [formats(x) for x in r1]		
+		 print len(r2),  len(r1)
+		 import csv
 		
 		# Creating file for dm densities
-		resultFile = open(filename,'wb')
+		 resultFile = open(filename,'wb')
 		
 		# Creating file for corresponding radii
-		resultFile1 = open(filename1,'wb')
-		print "printing lens"
-		print len(r2),len(y2)
+		 resultFile1 = open(filename1,'wb')
 		
-		wr = csv.writer(resultFile, dialect='excel')
-		print "now printing ************************************* writerows"
-		wr.writerows(y2)
+		 resultFile2 = open(filename12,'wb')
 		
-		wr1 = csv.writer(resultFile1, dialect='excel')
+		 wr = csv.writer(resultFile, dialect='excel')
+		 print "now printing ************************************* writerows"
+		 wr.writerows(y2)
+		 resultFile.close()
+		 
+		 wr1 = csv.writer(resultFile1, dialect='excel')
 		
-		#resultfile.close()
+		 
 
-		wr1.writerows(r2)
-		
+		 wr1.writerows(r2)
+		 resultFile1.close()
 				
-		radiistring.insert(nM,filename1)
-		densitystring.insert(nM,filename)
+		 radiistring.insert(n,filename1)
+		 densitystring.insert(n,filename)
+		 halo_dm_string.insert(n,filename12)
+		 
+		 total_dm_masses= [format(x) for x in total_dm_mass]
+		 wr2 = csv.writer(resultFile2, dialect='excel')
+		 
+		 wr2.writerows(total_dm_masses)
+		 resultFile2.close()
+		 
+		 
+	# replace t with outer_radius2, s1 with darkmass density
 
-					
-		
-					
 
-
-
-### This iterative portion here allows the whole process to run over again and again until the last progenitor is reached
-	filename_list.insert(nM,filename)
-	filename1_list.insert(nM,filename1)
 	
-	nM = nM + 1
+	n = n + 1
+	#print s
+	#print t  			
 	
+
 	#print "now printing filename list"
-
-
-
 
 
 # Finally, after this iterative process has produced all the necessary textfiles,
@@ -644,10 +625,75 @@ for c in densitystring:
 	data.write("%s\n" % c)
 	
 data.close()
+
+
+
+data = open(filename6,"w")
+
+for c in parent:
+	data.write("%s\n" % c)
+	
+data.close()
+
+
+
+data = open(filename7,"w")
+
+for c in dmhalomass:
+	data.write("%s\n" % c)
+	
+data.close()
+
+
+
+
+data = open(filename8,"w")
+
+for c in progenitor:
+	data.write("%s\n" % c)
+	
+data.close()
+
+
+
+data = open(filename9,"w")
+
+for c in descendant:
+	data.write("%s\n" % c)
+	
+data.close()
+
+
+
+
+data = open(filename10,"w")
+
+for c in halo_id :
+	data.write("%s\n" % c)
+	
+data.close()
+
+
 	
 
+data = open(filename11,"w")
+
+for c in redshift_string :
+	data.write("%s\n" % c)
+	
+data.close()
+
+
+
+data = open(filename13,"w")
+
+for c in halo_dm_string :
+	data.write("%s\n" % c)
+	
+data.close()
+
+
 
 
 
 	
-
